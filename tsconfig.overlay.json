@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+
+    "rootDir": "./src/overlay",
+    "outDir": "./dist/overlay",
+
+    "strict": true,
+
+    "lib": ["DOM", "ES2022"],
+
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    // 💡 必须加上这一行：强迫把每个文件当做独立模块，阻断全局命名空间污染
+    "isolatedModules": true
+  },
+  "include": ["src/overlay/**/*"]
+}

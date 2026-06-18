@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+
+    "rootDir": "./src/server",
+    "outDir": "./dist/server",
+
+    "strict": true,
+
+    "types": ["node"],
+
+    "esModuleInterop": true,
+    // 💡 必须加上这一行：强迫把每个文件当做独立模块，阻断全局命名空间污染
+    "isolatedModules": true
+  },
+  "include": ["src/server/**/*"]
+}

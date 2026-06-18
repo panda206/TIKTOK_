@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
+    </head>
+<head>
+    <meta charset="UTF-8">
+    <title>Renderer Test</title>
+
+    <style>
+        body{
+            background:#111;
+            color:white;
+            font-family:Arial;
+            padding:20px;
+        }
+
+        input,button{
+            padding:10px;
+            margin:5px;
+        }
+
+        #log{
+            height:300px;
+            overflow:auto;
+            border:1px solid #444;
+            margin-top:20px;
+            padding:10px;
+        }
+
+        #levelBox{
+            height:200px;
+            overflow:auto;
+            border:1px solid #444;
+            margin-top:20px;
+            padding:10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Electron Renderer Test</h2>
+
+    <input
+        id="username"
+        placeholder="输入主播用户名"
+    >
+
+    <button id="connectBtn">
+        连接
+    </button>
+
+    <div id="status">
+        等待连接...
+    </div>
+
+    <hr>
+
+    <div>
+        在线人数：
+        <span id="viewer">0</span>
+    </div>
+
+    <hr>
+
+    <h3>等级榜</h3>
+    <div id="levelBox"></div>
+
+    <h3>日志</h3>
+    <div id="log"></div>
+
+</body>
+
+<script type="module" src="./renderer.js"></script>
+
+</html>

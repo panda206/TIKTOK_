@@ -1,0 +1,66 @@
+{
+  "name": "my_tiktok",
+  "version": "1.0.0",
+  "description": "TikTok Live Assistant",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "clean": "rimraf dist",
+    "copy:html": "copyfiles -u 2 src/renderer/**/*.html dist/renderer",
+    "copy:overlay": "copyfiles -u 2 \"src/overlay/**/*.{html,css}\" dist/overlay",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "tsc -p tsconfig.renderer.json",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:overlay": "tsc -p tsconfig.overlay.json",
+    "compile": "npm run clean && npm run build:main && npm run build:renderer && npm run build:overlay && npm run build:server && npm run copy:html && npm run copy:overlay  ",
+    "electron": "electron .",
+    "obs": "node dist/server/obs_server.js",
+    "start": "chcp 65001 && npm run compile && concurrently \"npm run electron\" \"npm run obs\"",
+    "dev": "concurrently \"npm run electron\" \"npm run obs\"",
+    "dist": "npm run compile && electron-builder",
+    "dist:portable": "npm run compile && electron-builder --win portable"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.9.3",
+    "@types/ws": "^8.18.1",
+    "concurrently": "^10.0.3",
+    "copyfiles": "^2.4.1",
+    "electron": "^42.4.0",
+    "electron-builder": "^26.15.3",
+    "rimraf": "^6.1.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "express": "^5.2.1",
+    "global-agent": "^4.1.3",
+    "https-proxy-agent": "^9.1.0",
+    "socks-proxy-agent": "^10.1.0",
+    "tiktok-live-connector": "^2.1.1-beta1",
+    "ws": "^8.21.0"
+  },
+  "build": {
+    "appId": "com.mytiktok.app",
+    "productName": "TikTokLiveAssistant",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "asar": true
+  }
+}

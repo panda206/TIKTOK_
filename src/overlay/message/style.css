@@ -1,0 +1,89 @@
+body{
+    margin:0;
+    overflow:hidden;
+    background:transparent;
+}
+
+#messageLayer{
+
+    position:absolute;
+
+    left:20px;
+    bottom:40px;
+
+    width:300px;
+    height:500px;
+
+    padding:15px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:flex-end;
+
+    gap:8px;
+
+    overflow:hidden;
+
+    border-radius:25px;
+
+    background:rgba(0, 0, 0, 0.35);
+
+    backdrop-filter:blur(12px);
+
+    border:1px solid rgba(255, 255, 255, 0.327);
+
+}
+
+.message{
+    background: transparent !important;
+    border: none !important;
+    backdrop-filter: none !important;
+
+    padding: 0;
+    margin: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    /*animation: fadeIn 0.25s ease-out;*/
+}
+
+.message-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+.user{
+    font-weight:bold;
+    color:#ffd700;
+    font-size:13px;
+}
+
+.content{
+    color:white;
+    margin-left:36px;
+    font-size:14px;
+    
+    opacity:0.95;
+}
+.avatar{
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    object-fit:cover;
+
+    border:2px solid rgba(255,255,255,0.2);
+}
+
+@keyframes fadeIn{
+    from{
+        opacity:0;
+        transform:translateY(20px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
