@@ -11,7 +11,7 @@ export function bindEvents(
         const ranks = data.ranksList || [];
         //console.log("========== ROOM_USER RAW ==========");
         //console.log(JSON.stringify(data, null, 2));
-        console.log("\n🏆 前五贡献");
+        //console.log("\n🏆 前五贡献");
         const topList = ranks.slice(0, 5).map((item: any) => {
 
             const user = item.user;
@@ -20,6 +20,8 @@ export function bindEvents(
             return {
                 rank: item.rank,
                 user: user.uniqueId,
+                avatar: user.profilePicture?.url?.[0],
+                name: user.nickname,
                 level,
                 coin: item.coinCount
             };
@@ -34,7 +36,7 @@ export function bindEvents(
             type: 'viewer',
             value: data.viewerCount
         });
-
+       
         console.log(` [日常同步] 在线人数: [${data.viewerCount}]`);
         //log(`[日常同步] 在线人数: [${data.viewerCount}]`);
     });

@@ -21,7 +21,7 @@ document.getElementById("messageLayer") as HTMLDivElement;
 // ======================
 
 wsClient.on((data: any) => {
-    console.log("📩 收到数据:", data);
+    //console.log("📩 收到数据:", data);
     handleMessage(data);
 });
 

@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { broadcast } from "../server/ws_server";
 import path from 'path';
-import { start } from '../core/tiktok';
+import { start, disconnect } from '../core/tiktok';
 
 let mainWindow: BrowserWindow;
 
@@ -38,7 +38,7 @@ function createWindow() {
 // ============================
 function sendLog(data: any) {
 
-    console.log(data);
+    //console.log(data);
 
     // 发给OBS
     broadcast(data);
@@ -58,7 +58,15 @@ function sendLog(data: any) {
 app.whenReady().then(() => {
 
     createWindow();
-    
+    ipcMain.handle(
+    "disconnect-tiktok",
+    async () => {
+
+        await disconnect();
+
+        return true;
+    }
+);
     
     // ============================
     // 🎯 IPC：连接 TikTok

@@ -1,105 +1,153 @@
-body{
-    margin:0;
-    overflow:hidden;
-    background:transparent;
+/* ======================
+   全局
+====================== */
+body {
+    margin: 0;
+    overflow: hidden;
+    background: transparent;
+    font-family: Arial, Helvetica, sans-serif;
 }
 
-#rankLayer{
+/* ======================
+   容器
+====================== */
+#rankContainer {
+    position: absolute;
+    right: 30px;
+    top: 80px;
 
-    position:absolute;
-
-    left:20px;
-    top:20px;
-
-    width:320px;
-    height:360px;
-
+    width: 320px;
 }
 
-.rank-item{
-
-    position:absolute;
-
-    left:0;
-
-    width:100%;
-    height:60px;
-
-    display:flex;
-    align-items:center;
-
-    border-radius:20px;
-
-    background:rgba(0,0,0,.35);
-
-    backdrop-filter:blur(12px);
-
-    border:1px solid rgba(255,255,255,.15);
-
-    transition:
-        transform .5s cubic-bezier(.2,.8,.2,1);
-
+#rankList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.rank-item.top1{
-
-    border:2px solid gold;
-
+/* 关键：关闭初始化闪烁 */
+.no-anim .rank-item {
+    transition: none !important;
+    animation: none !important;
 }
 
-.rank-num{
+.rank-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 
-    width:40px;
+    padding: 8px 12px;
+    border-radius: 10px;
 
-    text-align:center;
+    background: rgba(0,0,0,0.35);
 
-    font-size:20px;
-
-    color:#FFD700;
-
-    font-weight:bold;
-
+    transition: transform 0.4s ease, opacity 0.4s ease;
 }
 
-.avatar{
-
-    width:40px;
-    height:40px;
-
-    border-radius:50%;
-
-    object-fit:cover;
-
-    margin-right:10px;
-
+.rank-number {
+    width: 30px;
 }
 
-.info{
+/* ======================
+   头像
+====================== */
+.avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
 
-    flex:1;
-
+    border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
-.name{
-
-    color:white;
-
-    font-size:14px;
-
-    font-weight:bold;
-
-    overflow:hidden;
-
-    white-space:nowrap;
-
-    text-overflow:ellipsis;
-
+/* ======================
+   用户信息
+====================== */
+.rank-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
 }
 
-.coin{
+.name {
+    font-size: 13px;
+    font-weight: bold;
+    color: #ffffff;
+}
 
-    color:#FFD700;
+.detail {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.7);
+}
 
-    font-size:13px;
+/* ======================
+   TOP 3 特殊效果
+====================== */
 
+/* 第1名 */
+.rank-item:nth-child(1) {
+    border: 1px solid rgba(255, 215, 0, 0.6);
+    box-shadow: 0 0 14px rgba(255, 215, 0, 0.25);
+    transform: scale(1.02);
+}
+
+/* 第2名 */
+.rank-item:nth-child(2) {
+    border: 1px solid rgba(192, 192, 192, 0.35);
+}
+
+/* 第3名 */
+.rank-item:nth-child(3) {
+    border: 1px solid rgba(205, 127, 50, 0.35);
+}
+
+/* ======================
+   hover效果（可选）
+====================== */
+.rank-item:hover {
+    transform: scale(1.03);
+}
+
+/* ======================
+   进场动画（新用户）
+====================== */
+/* ======================
+   进场动画（只影响新加入榜单的用户）
+====================== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 修改这里：只有当追加 .is-new 时才触发入场动画 */
+.rank-item.is-new {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+/* 常规状态下的 transition 保持不变（用于处理位置互换时的平滑丝滑过渡） */
+.rank-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 8px 12px;
+    border-radius: 10px;
+
+    background: rgba(0,0,0,0.35);
+
+    /* 这里的 transform 负责平滑位移动画 */
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+}
+/* ======================
+   防止闪烁（OBS关键）
+====================== */
+.rank-item img {
+    display: block;
 }
