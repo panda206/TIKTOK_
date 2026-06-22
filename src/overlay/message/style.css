@@ -1,89 +1,125 @@
-body{
-    margin:0;
-    overflow:hidden;
-    background:transparent;
-}
-
-#messageLayer{
-
-    position:absolute;
-
-    left:20px;
-    bottom:40px;
-
-    width:300px;
-    height:500px;
-
-    padding:15px;
-
-    display:flex;
-
-    flex-direction:column;
-
-    justify-content:flex-end;
-
-    gap:8px;
-
-    overflow:hidden;
-
-    border-radius:25px;
-
-    background:rgba(0, 0, 0, 0.35);
-
-    backdrop-filter:blur(12px);
-
-    border:1px solid rgba(255, 255, 255, 0.327);
-
-}
-
-.message{
-    background: transparent !important;
-    border: none !important;
-    backdrop-filter: none !important;
-
-    padding: 0;
+body {
     margin: 0;
+    overflow: hidden;
+    background: transparent;
+}
+
+#messageLayer {
+    position: absolute;
+    left: 20px;
+    bottom: 40px;
+    width: 300px;
+    height: 500px;
+    overflow: hidden; 
+
+    border-radius: 25px;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.327);
+}
+
+#messageScrollArea {
+    width: 100%;
+    height: 100%;
+    padding: 15px; 
+    box-sizing: border-box;
 
     display: flex;
     flex-direction: column;
+    justify-content: flex-end; 
+    gap: 0px; /* 间距由 margin-top 控制 */
 
-    /*animation: fadeIn 0.25s ease-out;*/
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 15%);
+    mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 15%);
 }
 
-.message-row{
-    display:flex;
-    align-items:center;
-    gap:8px;
-}
-.user{
-    font-weight:bold;
-    color:#ffd700;
-    font-size:13px;
-}
-
-.content{
-    color:white;
-    margin-left:36px;
-    font-size:14px;
+/* ======================
+   🔥 终极自适应垂直滚动动画 (Grid 方案)
+====================== */
+.message {
+    display: grid;
+    /* 初始状态：网格行高为 0fr（即高度为0） */
+    grid-template-rows: 0fr;
     
-    opacity:0.95;
-}
-.avatar{
-    width:28px;
-    height:28px;
-    border-radius:50%;
-    object-fit:cover;
+    margin-top: 0px;
+    opacity: 0;
+    
+    /* 强行禁止 Flex 引擎在挤压时压扁这个消息组件 */
+    flex-shrink: 0; 
 
-    border:2px solid rgba(255,255,255,0.2);
+    /* 缓动网格行高的变化，实现完美的纯自适应垂直滚动 */
+    transition: grid-template-rows 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                margin-top 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.25s ease;
 }
 
-@keyframes fadeIn{
-    from{
-        opacity:0;
-        transform:translateY(20px);
-    }
-    to{
-        opacity:1;
-        transform:translateY(0);
-    }
+/* 当弹幕被激活进入时 */
+.message.is-entered {
+    /* 💡【关键修复】设置为 1fr，网格会自动、100%完美地根据文字内容的实际长度撑开高度 */
+    grid-template-rows: 1fr;
+    margin-top: 12px;  
+    opacity: 1;
+}
+
+/* 内部包装层 */
+.message-wrapper {
+    /* 必须加 overflow: hidden，配合外层网格做 0fr 到 1fr 的收缩过渡 */
+    overflow: hidden; 
+    width: 100%;
+    
+    display: flex;
+    flex-direction: column;
+    
+    /* 内部内容的位移缓动 */
+    transform: translateY(15px);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.message.is-entered .message-wrapper {
+    transform: translateY(0px);
+}
+
+/* 顶端消息被踢出时的退场 */
+.message.is-exit {
+    grid-template-rows: 0fr !important;
+    margin-top: 0px !important;
+    opacity: 0 !important;
+    transition: all 0.3s ease;
+}
+
+/* ======================
+   常规样式
+===================== */
+.message-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user {
+    font-weight: bold;
+    color: #ffd700;
+    font-size: 13px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.content {
+    color: white;
+    margin-left: 36px;
+    font-size: 14px;
+    opacity: 0.95;
+    
+    /* 💡 确保长文本能自动换行，换行后 Grid 会自动重新计算它的高度 */
+    word-break: break-all; 
+    white-space: normal;
+    
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.2);
 }
