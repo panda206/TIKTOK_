@@ -52,6 +52,7 @@ export function bindEvents(
         log({
             type: "chat",
             user: data.user?.uniqueId,
+            name: data.user?.nickname,
             message: data.comment,
             avatar: data.user?.profilePicture?.url?.[0]
         });
@@ -66,6 +67,7 @@ export function bindEvents(
             log({
                 type: "gift",
                 user: data.user?.uniqueId,
+                name: data.user?.nickname,
                 gift: data.giftDetails.giftName,
                 avatar: data.user?.profilePicture?.url?.[0]
             });
@@ -77,6 +79,7 @@ export function bindEvents(
         log({
             type: "like",
             user: data.user?.uniqueId,
+            name: data.user?.nickname,
             count: data.likeCount,
             avatar: data.user?.profilePicture?.url?.[0]
         });
@@ -87,6 +90,7 @@ export function bindEvents(
         log({
             type: "member",
             user: data.user?.uniqueId,
+            name: data.user?.nickname,
             avatar: data.user?.profilePicture?.url?.[0]
         });
     });

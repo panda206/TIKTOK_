@@ -16,6 +16,7 @@
   "include": [
     "src/main/main.ts",
     "src/main/preload.ts",
-    "src/core/**/*"
+    "src/core/**/*",
+    "src/scanner/**/*"
   ]
 }

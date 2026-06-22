@@ -74,9 +74,9 @@ function addMessage(user: string, text: string, avatar: string = "") {
 
 function handleMessage(data: any) {
     switch (data.type) {
-        case "chat": addMessage(data.user, data.message, data.avatar || ""); break;
-        case "like": addMessage(data.user, `点赞 x${data.count}`, data.avatar || ""); break;
-        case "member": addMessage(data.user, "进入直播间", data.avatar || ""); break;
+        case "chat": addMessage(data.name, data.message, data.avatar || ""); break;
+        case "like": addMessage(data.name, `点赞 x${data.count}`, data.avatar || ""); break;
+        case "member": addMessage(data.name, "进入直播间", data.avatar || ""); break;
         default: console.log("❓ 其他类型:", data.type);
     }
 }
