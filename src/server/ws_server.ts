@@ -10,7 +10,7 @@ console.log("👉 ws://localhost:3001");
 
 export function broadcast(data: any) {
 
-    //console.log("📤 广播数据___:", data, "\n");
+    console.log("📤 广播数据___:", data, "\n");
 
     const json = JSON.stringify(data);
 
