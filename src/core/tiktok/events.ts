@@ -1,4 +1,20 @@
 import { getUserLevel } from './utils';
+import { translate } from "../../translate/translator";
+
+
+//防止刷屏
+const last = new Map<string, number>();
+
+function shouldTranslate(text: string) {
+    const now = Date.now();
+
+    if (last.has(text) && now - last.get(text)! < 1000) {
+        return false;
+    }
+
+    last.set(text, now);
+    return true;
+}
 
 export function bindEvents(
     tiktokConnection: any,
@@ -41,23 +57,25 @@ export function bindEvents(
         //log(`[日常同步] 在线人数: [${data.viewerCount}]`);
     });
 
-    tiktokConnection.on(WebcastEvent.CHAT, (data: any) => {
-        //console.log("========== CHAT RAW ==========");
-        //console.log(JSON.stringify(data, null, 2));
-        //console.log("avatar =", data.user?.profilePicture?.url);
-        //console.log("avatar first =", data.user?.profilePicture?.url?.[0]);
+    tiktokConnection.on(WebcastEvent.CHAT, async (data: any) => {
+        //const rawMessage = data.comment || "";
+        const message = data.comment || "";
+        if (!shouldTranslate(message)) return;
+        // 🔥 翻译（核心）
+        const translated = await translate(message);
         const avatar =
         data.user?.profilePicture?.url?.[0] || "";
-        //console.log(`💬 CHAT_____${data.user?.uniqueId}: ${data.comment}`);
+        console.log(`💬 翻译内容: ${translated}`);
         log({
             type: "chat",
             user: data.user?.uniqueId,
             name: data.user?.nickname,
-            message: data.comment,
-            avatar: data.user?.profilePicture?.url?.[0]
+            message: message,
+            messageCN:translated,
+            avatar: avatar
         });
         
-        //console.log("========== BACKEND SEND ==========");
+        console.log("========== BACKEND SEND ==========");
         
     });
 

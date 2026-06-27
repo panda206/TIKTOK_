@@ -3,6 +3,7 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+   
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -12,6 +13,7 @@
   "references": [
     { "path": "./tsconfig.main.json" },
     { "path": "./tsconfig.renderer.json" },
-    { "path": "./tsconfig.overlay.json" }
+    { "path": "./tsconfig.overlay.json" },
+    { "path": "./tsconfig.translate.json" }
   ]
 }

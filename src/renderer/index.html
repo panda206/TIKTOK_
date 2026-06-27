@@ -1,77 +1,47 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
-    </head>
-<head>
     <meta charset="UTF-8">
-    <title>Renderer Test</title>
-
-    <style>
-        body{
-            background:#111;
-            color:white;
-            font-family:Arial;
-            padding:20px;
-        }
-
-        input,button{
-            padding:10px;
-            margin:5px;
-        }
-
-        #log{
-            height:300px;
-            overflow:auto;
-            border:1px solid #444;
-            margin-top:20px;
-            padding:10px;
-        }
-
-        #levelBox{
-            height:200px;
-            overflow:auto;
-            border:1px solid #444;
-            margin-top:20px;
-            padding:10px;
-        }
-    </style>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self';">
+    <title>Renderer Control Panel</title>
+    <link rel="stylesheet" href="./style.css">
 </head>
-
 <body>
 
-    <h2>Electron Renderer Test</h2>
+    <div class="container">
+        <h2>Electron 控制面板</h2>
 
-    <input
-        id="username"
-        placeholder="输入主播用户名"
-    >
+        <div class="control-group">
+            <input 
+                id="username" 
+                type="text" 
+                placeholder="输入主播用户名"
+                autocomplete="off"
+            >
+            <button id="connectBtn">连接</button>
+        </div>
 
-    <button id="connectBtn">
-        连接
-    </button>
+        <div id="status" class="status-waiting">
+            等待连接...
+        </div>
 
-    <div id="status">
-        等待连接...
+        <!-- ==================== 💡 完美保留以上，以下为新增的大厅扫描控制区 ==================== -->
+        <hr class="scan-divider">
+
+        <div class="control-group scan-group">
+            <button id="startScanBtn" class="btn-start-scan">开始扫描大厅</button>
+            <button id="stopScanBtn" class="btn-stop-scan" disabled>停止</button>
+        </div>
+
+        <div id="scanStatus" class="scan-status-text">
+            扫描状态：等待开始...
+        </div>
+        <div id="dataCountBox" class="scan-status-text scan-count-highlight">
+            已成功获取数据：0 组
+        </div>
+        <!-- ================================================================================== -->
     </div>
 
-    <hr>
-
-    <div>
-        在线人数：
-        <span id="viewer">0</span>
-    </div>
-
-    <hr>
-
-    <h3>等级榜</h3>
-    <div id="levelBox"></div>
-
-    <h3>日志</h3>
-    <div id="log"></div>
-
+    <script type="module" src="./renderer.js"></script>
 </body>
-
-<script type="module" src="./renderer.js"></script>
-
 </html>

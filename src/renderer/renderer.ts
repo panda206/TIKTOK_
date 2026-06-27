@@ -4,20 +4,16 @@ const statusText = document.getElementById('status') as HTMLDivElement;
 const logBox = document.getElementById('log') as HTMLDivElement;
 const viewerCount = document.getElementById('viewer') as HTMLDivElement;
 const levelBox = document.getElementById('levelBox') as HTMLDivElement;
-console.log('renderer loaded');
-// ==========================================
-// 🔍 阶段一：验证 renderer.ts 是否被成功加载运行
-// ==========================================
-console.log("%c▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓", "color: #00f0ff; font-weight: bold;");
-console.log("%c🚀 [TEST LOG] 恭喜！renderer.ts 已经成功被浏览器内核加载并运行了！", "color: #00ffaa; font-size: 14px; font-weight: bold;");
-console.log(`⏱️  当前装载时间: ${new Date().toLocaleString()}`);
+const startScanBtn = document.getElementById('startScanBtn') as HTMLButtonElement;
+const stopScanBtn = document.getElementById('stopScanBtn') as HTMLButtonElement;
+const scanStatusText = document.getElementById('scanStatus') as HTMLDivElement;
+const dataCountBox = document.getElementById('dataCountBox') as HTMLDivElement;
+
 console.log("🔍 DOM 元素探测状态:", {
     connectBtn: connectBtn ? "✅ 成功获取" : "❌ 未找到(检查ID)",
     usernameInput: usernameInput ? "✅ 成功获取" : "❌ 未找到(检查ID)",
     statusText: statusText ? "✅ 成功获取" : "❌ 未找到(检查ID)"
 });
-console.log("%c▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓", "color: #00f0ff; font-weight: bold;");
-
 
 let isConnecting = false;
 
@@ -71,7 +67,54 @@ if (connectBtn && usernameInput) {
         }
     });
 }
+//扫描大厅
+if (startScanBtn && stopScanBtn && scanStatusText) {
+    
+    // 监听“开始扫描大厅”点击
+    startScanBtn.addEventListener('click', () => {
+        if (electronAPI && typeof electronAPI.startScan === 'function') {
+            console.log('🟢 [RENDERER] 触发：请求启动大厅扫描器');
+            electronAPI.startScan();
+            startScanBtn.disabled = true;
+            stopScanBtn.disabled = false;
+        }
+    });
 
+    // 监听“停止”点击
+    stopScanBtn.addEventListener('click', () => {
+        if (electronAPI && typeof electronAPI.stopScan === 'function') {
+            console.log('🔴 [RENDERER] 触发：请求终止大厅扫描器');
+            electronAPI.stopScan();
+            stopScanBtn.disabled = true;
+        }
+    });
+
+    // 集中式监听来自主进程回传的扫描器真实运行状态反馈
+    if (electronAPI && typeof electronAPI.onScanStatus === 'function') {
+        electronAPI.onScanStatus((statusMessage: string) => {
+            scanStatusText.innerText = `扫描状态：${statusMessage}`;
+            
+            // 只要收到“已停止”或“异常终止”前缀，立马释放“开始”按钮可点击状态
+            if (statusMessage.includes('🛑') || statusMessage.includes('❌') || statusMessage.includes('等待')) {
+                startScanBtn.disabled = false;
+                stopScanBtn.disabled = true;
+            } else {
+                // 运行中状态下确保“停止按钮”可以发挥作用
+                startScanBtn.disabled = true;
+                stopScanBtn.disabled = false;
+            }
+        });
+    }
+}
+//监控扫描数据数量
+if (dataCountBox) {
+    if (electronAPI && typeof electronAPI.onDataCount === 'function') {
+        electronAPI.onDataCount((count: number) => {
+            console.log(`🎯 [RENDERER] 收到最新成功数据量更新: ${count} 组`);
+            dataCountBox.innerText = `已成功获取数据：${count} 组`;
+        });
+    }
+}
 /**
  * 🛰️ 建立动态事件集中挂载器
  */

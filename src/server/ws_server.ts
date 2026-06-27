@@ -10,7 +10,7 @@ console.log("👉 ws://localhost:3001");
 
 export function broadcast(data: any) {
 
-    console.log("📤 广播数据___:", data, "\n");
+    //console.log("📤 广播数据___:", data, "\n");
 
     const json = JSON.stringify(data);
 
@@ -20,7 +20,7 @@ export function broadcast(data: any) {
 
         if (client.readyState === WebSocket.OPEN) {
 
-            console.log("发送给客户端");
+            //console.log("发送给客户端");
 
             client.send(json);
 

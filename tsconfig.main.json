@@ -4,12 +4,15 @@
 
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+  
 
     "rootDir": "./src",
     "outDir": "./dist",
 
     "strict": true,
     "esModuleInterop": true,
+    // 💡 必须加上这一行：强迫把每个文件当做独立模块，阻断全局命名空间污染
+    "isolatedModules": true,
     "skipLibCheck": true,
     "types": ["node"]
   },
@@ -17,6 +20,6 @@
     "src/main/main.ts",
     "src/main/preload.ts",
     "src/core/**/*",
-    "src/scanner/**/*"
+    "src/scanner/**/*",
   ]
 }

@@ -1,198 +1,242 @@
 import { bus } from './bus';
-import { execSync } from 'child_process';
-import http from 'http';
-import https from 'https';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import fs from 'fs';
 import path from 'path';
-import util from 'util'; // 引入 util 彻底拆解 [object Object]
+import util from 'util';
+import { injectProxyFromRegistry } from './proxyHelper';
 
-// 队列调度状态
-const hostQueue: string[] = [];
-let isProcessing = false;
-let currentConnection: any = null;
+// ===================== 状态 =====================
 
-// 数据存储路径
-const DATA_STORE_PATH = path.join(__dirname, 'live_ranks_data.json');
+const queue: string[] = [];
+const visited = new Set<string>();
 
-function getUserLevel(user: any): number {
-    return user?.level || user?.badgeInfo?.level || 0;
+let running = false;
+let currentConn: any = null;
+
+// 💡 新增：记录总成功获取的数据量
+let savedCount = 0;
+
+
+// ⭐ 核心修复：真正的“暂停闸门”
+let pausedUntil = 0;
+
+// 连接节流
+let connectLog: number[] = [];
+
+// 💡 允许上游 Scraper 检查当前积压了多少任务
+export function getQueueLength(): number {
+    return queue.length;
 }
 
-function saveData(host: string, topList: any[]) {
-    const record = {
-        host,
-        timestamp: new Date().toISOString(),
-        topFiveContributors: topList
-    };
+// 💡 新增：允许外部拉取当前已成功获取了多少个数据
+export function getSavedCount(): number {
+    return savedCount;
+}
 
-    try {
-        let currentData: any[] = [];
-        if (fs.existsSync(DATA_STORE_PATH)) {
-            const fileContent = fs.readFileSync(DATA_STORE_PATH, 'utf-8');
-            currentData = JSON.parse(fileContent || '[]');
+
+
+// ===================== 工具 =====================
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+// 🌟 修改：存储路径改为 CSV 表格文件
+const CSV_PATH = path.join(__dirname, 'rank_data.csv');
+
+// ===================== 存储 (CSV表格) =====================
+
+function saveToCsv(host: string, data: any[]) {
+    // 1. 如果文件不存在，先创建并写入表头（第一列host, 第二列user, 第三列coin, 第四列name, 第五列time）
+    if (!fs.existsSync(CSV_PATH)) {
+        const header = 'host,user,coin,name,time\n';
+        fs.writeFileSync(CSV_PATH, header, 'utf-8');
+    }
+
+    const timeStr = new Date().toISOString();
+    let rows = '';
+
+    // 2. 将排名的每一条数据拆解成表格的一行
+    for (const item of data) {
+        const user = item.user || '未知';
+        const name = item.name || '未知';
+        const coin = item.coin ?? 0;
+        
+        // 组装成 CSV 标准行，最后加上换行符
+        rows += `${host},${user},${coin},${name},${timeStr}\n`;
+    }
+
+    // 3. 使用 appendFileSync 实时追加到表格末尾，不影响历史数据
+    if (rows) {
+        fs.appendFileSync(CSV_PATH, rows, 'utf-8');
+        // 🌟 核心修改：数据成功追加一行/一次后，计数器累加，并向 Electron 主进程跨进程通信
+        savedCount++;
+        if (process.send) {
+            process.send({ type: 'DATA_COUNT_UPDATE', count: savedCount });
         }
-        currentData.push(record);
-        fs.writeFileSync(DATA_STORE_PATH, JSON.stringify(currentData, null, 2), 'utf-8');
-        console.log(`💾 [BigBro] @${host} 的前五贡献榜数据已成功写入本地日志。`);
-    } catch (err) {
-        console.error(`❌ [BigBro] 存储数据失败:`, err);
     }
 }
 
-function injectProxyFromRegistry() {
-    if (process.platform !== 'win32') return;
+// ===================== 限流记录 =====================
 
-    try {
-        const result = execSync(
-            `reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyServer`,
-            { stdio: ['pipe', 'pipe', 'ignore'] }
-        ).toString();
+function recordConnectLimit() {
+    const now = Date.now();
 
-        const match = result.match(/REG_SZ\s+(?:https?:\/\/)?([\d\.]+:\d+)/);
-        if (match && match[1]) {
-            const proxyUrl = `http://${match[1]}`;
-            console.log(`🌐 [BigBro Proxy] 检测到系统局域网代理: ${proxyUrl}，正在注入底层...`);
-            
-            const agent = new HttpsProxyAgent(proxyUrl);
-            const originHttp = http.request;
-            const originHttps = https.request;
+    connectLog = connectLog.filter(t => now - t < 60000);
+    connectLog.push(now);
 
-            (http as any).request = function (...args: any[]) {
-                const opt = args[0];
-                if (opt && !opt.agent) opt.agent = agent;
-                return originHttp.apply(this, args as any);
-            };
-
-            (https as any).request = function (...args: any[]) {
-                const opt = args[0];
-                if (opt && !opt.agent) opt.agent = agent;
-                return originHttps.apply(this, args as any);
-            };
-        }
-    } catch (e) {
-        console.log(`ℹ️ [BigBro Proxy] 未发现系统注册表代理，将尝试直连。`);
+    if (connectLog.length >= 6) {
+        console.log('🧊 每分钟连接过多，强制暂停 60s');
+        pausedUntil = now + 60000;
     }
 }
+
+// ===================== 主调度 =====================
 
 async function processQueue() {
-    if (isProcessing || hostQueue.length === 0) return;
-    isProcessing = true;
+    if (running) return;
+    running = true;
 
     const { TikTokLiveConnection, WebcastEvent } = await import('tiktok-live-connector');
 
-    while (hostQueue.length > 0) {
-        const nextHost = hostQueue.shift();
-        if (!nextHost) continue;
+    while (queue.length > 0) {
 
-        if (currentConnection) {
-            try {
-                console.log(`🔴 [BigBro] 正在断开旧直播间...`);
-                currentConnection.removeAllListeners();
-                await currentConnection.disconnect();
-            } catch (err) {}
-            currentConnection = null;
-            await new Promise(resolve => setTimeout(resolve, 500));
+        const now = Date.now();
+
+        // ================= ⭐ 关键修复：硬暂停闸门 =================
+        if (now < pausedUntil) {
+            const wait = pausedUntil - now;
+            console.log(`🧊 系统暂停中，剩余 ${Math.ceil(wait / 1000)}s...`);
+            await sleep(wait);
+            continue;
         }
 
-        console.log(`\n🟡 [BigBro] -----------------------------------------`);
-        console.log(`🟡 [BigBro] 正在尝试连接主播: @${nextHost}`);
+        const host = queue.shift();
+        if (!host) continue;
 
-        currentConnection = new TikTokLiveConnection(nextHost, {
-            disableEulerFallbacks: false // 🌟 允许走备用路由
-        });
+        if (visited.has(host)) continue;
+        visited.add(host);
 
-        await new Promise<void>(async (resolve) => {
-            let isResolved = false;
-            let hasConnected = false;
+        console.log(`\n🟡 连接 @${host}`);
 
-            const finishCurrentHost = () => {
-                if (!isResolved) {
-                    isResolved = true;
-                    
-                    // 🌟 深度清理：彻底解绑所有事件，防止旧连接的 error 污染新连接
-                    try { currentConnection.removeAllListeners(); } catch(e){}
-                    
-                    if (hasConnected) {
-                        try { currentConnection.disconnect(); } catch(e){}
-                    }
-                    resolve();
-                }
-            };
-
-            // 15 秒强制超时兜底
-            const timeoutTimer = setTimeout(() => {
-                console.log(`⏳ [@${nextHost}] 15秒观察时间截止，自动切换下一个...`);
-                finishCurrentHost();
-            }, 15000);
-
-            // 1. 核心监听贡献榜数据
-            currentConnection.on(WebcastEvent.ROOM_USER, (data: any) => {
-                const ranks = data?.ranksList || [];
-                if (ranks.length > 0) {
-                    clearTimeout(timeoutTimer);
-                    const topList = ranks.slice(0, 5).map((item: any) => {
-                        const user = item.user || {};
-                        return {
-                            rank: item.rank,
-                            user: user.uniqueId,
-                            avatar: user.profilePicture?.url?.[0],
-                            name: user.nickname,
-                            level: getUserLevel(user),
-                            coin: item.coinCount
-                        };
-                    });
-
-                    console.log(`🏆 [@${nextHost}] 成功抓取前五贡献榜单(共 ${topList.length} 人)`);
-                    saveData(nextHost, topList);
-                    finishCurrentHost();
-                }
-            });
-
-            // 2. 弱警告处理：利用 util 展开看看到底是什么 Object
-            currentConnection.on('error', (err: any) => {
-                // 仅作日志记录，绝不打断 Promise 流程
-                console.log(`⚠️ [@${nextHost}] 内部警告:`, util.inspect(err, { depth: 1, colors: true }));
-            });
-
-            currentConnection.on('disconnected', () => {
-                finishCurrentHost();
-            });
-
-            // 3. 执行异步握手
+        // ================= 断开旧连接并清理 =================
+        if (currentConn) {
             try {
-                console.log(`📡 [BigBro] 正在与直播间建立 WebSocket 握手...`);
-                await currentConnection.connect();
-                hasConnected = true; 
-                console.log(`✅ [BigBro] 已成功进入房间，等待首帧数据派发...`);
-            } catch (err) {
-                if (!isResolved) {
-                    console.error(`❌ [BigBro] 握手阶段直接失败 @${nextHost}`);
-                    clearTimeout(timeoutTimer);
-                    finishCurrentHost();
-                }
-            }
+                currentConn.removeAllListeners();
+                await currentConn.disconnect();
+            } catch {}
+            currentConn = null;
+            await sleep(500);
+        }
+
+        currentConn = new TikTokLiveConnection(host, {
+            disableEulerFallbacks: false
         });
 
-        // 🌟 关键：将切换间隔拉长到 2.5 秒！给代理软件和 TikTok 接口充足的断开/释放时间，防止被连续风控封锁
-        console.log(`💤 [BigBro] 进入安全冷却期，等待 3 秒后调度下一位...`);
-        await new Promise(r => setTimeout(r, 3000));
+        let done = false;
+        let success = false;
+        let timeout: NodeJS.Timeout | null = null;
+
+        const finish = () => {
+            if (done) return;
+            done = true;
+
+            // ⭐ 核心修复：一旦结束，立刻清除定时器，防止重复触发 timeout 日志
+            if (timeout) {
+                clearTimeout(timeout);
+                timeout = null;
+            }
+
+            if (!success) {
+                console.log(`❌ @${host} 失败`);
+            } else {
+                console.log(`✅ @${host} 成功`);
+            }
+            
+            if (currentConn) {
+                currentConn.removeAllListeners();
+            }
+        };
+
+        // 设定超时限制
+        timeout = setTimeout(() => {
+            console.log(`⏳ @${host} timeout`);
+            finish();
+        }, 12000);
+
+        // ================= 数据监听 =================
+        currentConn.on(WebcastEvent.ROOM_USER, (data: any) => {
+            const ranks = data?.ranksList || [];
+
+            if (!ranks.length) return;
+
+            success = true;
+            
+            const top = ranks.slice(0, 5).map((x: any) => ({
+                user: x.user?.uniqueId,
+                coin: x.coinCount,
+                level: x.user?.level,
+                name: x.user?.nickname
+            }));
+
+            // 🌟 核心修改：调用 CSV 存储逻辑
+            saveToCsv(host, top);
+            finish();
+        });
+
+        currentConn.on('disconnected', () => {
+            finish();
+        });
+
+        // ================= 连接前控制与核心风控捕获 =================
+
+        recordConnectLimit();
+
+        try {
+            // ⭐ 随机延迟（防风控）
+            await sleep(2000 + Math.random() * 3000);
+
+            // 开始连接
+            await currentConn.connect();
+
+        } catch (e: any) {
+            // 将错误格式化为完整字符串，方便检查
+            const errorDetail = util.inspect(e, { depth: 2 });
+            const errorStr = String(e?.message || e?.exception?.message || errorDetail);
+            const reasonStr = String(e?.reason || e?.exception?.reason || '');
+
+            // ❗ 核心风控判定
+            if (errorStr.includes('SIGI_STATE') || reasonStr.includes('SIGI_STATE')) {
+                console.log('🧊 触发 SIGI 风控（IP已被TikTok拦截） → 强制暂停 120 秒');
+                pausedUntil = Math.max(pausedUntil, Date.now() + 120000);
+            } 
+            else if (errorStr.includes('Rate Limited') || reasonStr.includes('Rate Limited')) {
+                console.log('🧊 触发 Euler 限流 → 强制暂停 120 秒');
+                pausedUntil = Math.max(pausedUntil, Date.now() + 120000);
+            }
+            else {
+                console.log(`⚠️ @${host} 连接发生非风控异常:`, errorDetail);
+            }
+
+            finish();
+        }
+
+        // 每次请求完毕后的基准冷却
+        await sleep(15000 + Math.random() * 15000);
     }
 
-    isProcessing = false;
+    running = false;
 }
 
-export async function startBigBro() {
-    console.log('👁️ [BigBro] 监控线程启动，正在等待大厅扫描任务...');
+// ===================== 启动 =====================
+
+export function startBigBro() {
+    console.log('🚀 BigBro Stable Fixed Started');
+
     injectProxyFromRegistry();
 
     bus.on('hosts', (hosts: string[]) => {
-        for (const host of hosts) {
-            if (!hostQueue.includes(host)) {
-                hostQueue.push(host);
-                console.log(`📥 [BigBro] 收到新任务 @${host}，加入队列 (当前排队: ${hostQueue.length})`);
-            }
+        for (const h of hosts) {
+            if (!queue.includes(h)) queue.push(h);
         }
+
         processQueue();
     });
 }

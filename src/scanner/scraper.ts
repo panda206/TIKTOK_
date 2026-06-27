@@ -1,7 +1,9 @@
 import { chromium } from 'playwright';
 import { bus } from './bus';
-import { startBigBro } from './getBigBro';
+import { startBigBro, getQueueLength } from './getBigBro'; // 💡 新增：导入 getQueueLength
 import { execSync } from 'child_process';
+
+let globalBrowserInstance: any = null;
 
 /**
  * 独立从注册表提取 Proxy 给 Playwright 使用
@@ -39,7 +41,7 @@ function parseViewerStringToNumber(text: string): number {
 async function run() {
     console.log('1️⃣ [Scraper] 启动 BigBro 消费者端监听...');
     await startBigBro();
-
+    
     const scannedHosts = new Set<string>();
     const browserProxy = getPlaywrightProxy();
 
@@ -81,9 +83,26 @@ async function run() {
     }
 
     await page.waitForTimeout(5000);
-    console.log('🚀 [Scraper] 成功进入大厅，开始疯狂向下滚动并扫描...');
-
+    console.log('🚀 [Scraper] 成功进入大厅，开始向下滚动并扫描...');
+    // 💡 新增：成功进入大厅后，向主进程上报状态
+    if (process.send) {
+        console.log('📡 [Scraper] 准备向主进程发送 SCAN_STATUS_UPDATE 信号...');
+        process.send({ type: 'SCAN_STATUS_UPDATE', status: '正在扫描中...' });
+    console.log('✅ [Scraper] SCAN_STATUS_UPDATE 信号已成功调用 process.send()');
+    } else {
+        console.error('❌ [Scraper] 严重错误：当前环境 process.send 未定义，无法与主进程通信！');
+    }
     for (let i = 0; i < 60000; i++) {
+        
+        // ================= ⭐ 核心修改：防溢流阀门 =================
+        const currentPendingTasks = getQueueLength();
+        if (currentPendingTasks > 5) {
+            console.log(`🛑 [Scraper] 下游任务积压中 (当前排队: ${currentPendingTasks} 个)，暂停扫描滚动 10 秒...`);
+            await page.waitForTimeout(10000);
+            continue; // 跳过本轮滚动和 DOM 扫描，等待下游消化
+        }
+
+        // 下游空闲，允许向下滚动
         await page.evaluate(() => {
             window.scrollBy(0, window.innerHeight * 1.5);
         });
@@ -153,7 +172,6 @@ async function run() {
 
                 // 2. 🌟 严格筛选过滤：只有人数大于等于 10 人的才放行
                 if (numericCount < 10) {
-                    // console.log(`⏭️ [Scraper] 过滤低人气/未识别主播: @${item.uniqueId} (捕捉到人数: ${item.viewerCountStr})`);
                     continue;
                 }
 
@@ -169,7 +187,8 @@ async function run() {
             // ignore
         }
 
-        await page.waitForTimeout(2500 + Math.random() * 1500);
+        // 💡 稍微放宽大厅滚动的基准间隔，减轻浏览器和网络端压力
+        await page.waitForTimeout(3500 + Math.random() * 1500);
     }
 
     await browser.close();
@@ -179,4 +198,15 @@ async function run() {
 console.log("🎬 正在初始化启动 Scanner 独立模块...");
 run().catch(err => {
     console.error("🔥 运行时发生异常:", err);
+});
+
+process.on('SIGINT', async () => {
+    console.log('🛑 [Scraper Process] 接收到来自主进程的 SIGINT 关闭信号，准备彻底清场...');
+    try {
+        if (globalBrowserInstance) {
+            await globalBrowserInstance.close();
+            console.log('✅ [Scraper Process] Playwright 浏览器实例成功安全注销。');
+        }
+    } catch(e) {}
+    process.exit(0);
 });
